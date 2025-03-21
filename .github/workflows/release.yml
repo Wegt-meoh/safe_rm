@@ -1,0 +1,52 @@
+name: Build and Release Rust Binary for Windows, Linux, and macOS
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, x86_64-apple-darwin]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+
+      - name: Build for ${{ matrix.os }}
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Archive the build
+        run: |
+          mkdir -p release
+          cp target/${{ matrix.target }}/release/my_binary release/my_binary-${{ matrix.os }}-${{ matrix.target }}
+        if: success()
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: my_binary-${{ matrix.os }}-${{ matrix.target }}
+          path: release/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.SAFE_RM_RELEASE_TOKEN }}

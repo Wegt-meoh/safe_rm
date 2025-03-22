@@ -24,8 +24,6 @@ jobs:
             target: x86_64-apple-darwin
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-          - os: ubuntu-22.04
-            target: aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
@@ -44,6 +42,63 @@ jobs:
             bin="target/${{ matrix.target }}/release/safe-rm"
           fi
 
+          echo "BIN=$bin" >> $GITHUB_ENV
+          
+      - name: Mv binary
+        shell: bash
+        run: |
+          pd="safe-rm-latest-${{ matrix.target }}"
+          mkdir -p "$pd"
+          mv "$BIN" "$pd"
+          echo "pd=$pd" >> $GITHUB_ENV
+
+      - name: Generate sha256 hash(windows)
+        if: matrix.os=='windows-latest'
+        shell: bash
+        run: |
+          7z a "$pd.zip" "$pd"
+          certutil -hashfile "$pd.zip" SHA256 > "$pd.zip.sha256"
+          echo "ASSET=$pd.zip" >> $GITHUB_ENV
+          echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
+
+      - name: Generate sha256 hash(not window)
+        if: matrix.os!='windows-latest'
+        shell: bash
+        run: |
+          tar -czvf "$pd.tar.gz" "$pd"
+          shasum -a 256 "$pd.tar.gz" > "$pd.tar.gz.sha256"
+          echo "ASSET=$pd.tar.gz" >> $GITHUB_ENV
+          echo "ASSET_SUM=$pd.tar.gz.sha256" >> $GITHUB_ENV
+
+      - name: Upload Binary as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.target }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET_SUM }}
+
+  build-ubuntu-aach64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross-compilation dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+      
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+     
+      - name: Install Rust target
+        run: rustup target add aarch64-unknown-linux-gnu
+
+      - name: Set CC for cross-compilation
+        run: echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Build for ${{ matrix.target }}
+        shell: bash
+        run: |
+          bin="target/${{ matrix.target }}/release/safe-rm"
           echo "BIN=$bin" >> $GITHUB_ENV
           
       - name: Mv binary

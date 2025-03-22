@@ -44,7 +44,11 @@ jobs:
 
           echo "BIN=$bin" >> $GITHUB_ENV
 
-      - name: mv binary
+      - name: Check binary exists
+        shell: bash
+        run: |
+          ls -l target/x86_64-unknown-linux-gnu/release/
+      - name: Mv binary
         shell: bash
         run: |
           pd="genshin_script-latest-${{ matrix.target }}"

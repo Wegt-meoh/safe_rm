@@ -24,11 +24,23 @@ jobs:
             target: x86_64-apple-darwin
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
-     
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo
+            ~/.rustup
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
@@ -43,7 +55,7 @@ jobs:
           fi
 
           echo "BIN=$bin" >> $GITHUB_ENV
-          
+
       - name: Mv binary
         shell: bash
         run: |
@@ -52,84 +64,20 @@ jobs:
           mv "$BIN" "$pd"
           echo "pd=$pd" >> $GITHUB_ENV
 
-      - name: Generate sha256 hash(windows)
-        if: matrix.os=='windows-latest'
+      - name: Generate sha256 hash
         shell: bash
         run: |
-          7z a "$pd.zip" "$pd"
-          certutil -hashfile "$pd.zip" SHA256 > "$pd.zip.sha256"
-          echo "ASSET=$pd.zip" >> $GITHUB_ENV
-          echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
-
-      - name: Generate sha256 hash(not window)
-        if: matrix.os!='windows-latest'
-        shell: bash
-        run: |
-          tar -czvf "$pd.tar.gz" "$pd"
-          shasum -a 256 "$pd.tar.gz" > "$pd.tar.gz.sha256"
-          echo "ASSET=$pd.tar.gz" >> $GITHUB_ENV
-          echo "ASSET_SUM=$pd.tar.gz.sha256" >> $GITHUB_ENV
-
-      - name: Upload Binary as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.target }}
-          path: |
-            ${{ env.ASSET }}
-            ${{ env.ASSET_SUM }}
-
-  build-ubuntu-aach64:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-     
-      - name: Install Rust target
-        run: rustup target add ${{ matrix.target }}
-
-      - name: Install cross
-        run: cargo install cross
-
-      - name: Build for ${{ matrix.target }}
-        shell: bash
-        run: |
-          cross build --release --target ${{ matrix.target }}
-          bin="target/${{ matrix.target }}/release/safe-rm"
-          echo "BIN=$bin" >> $GITHUB_ENV
-          
-      - name: Mv binary
-        shell: bash
-        run: |
-          pd="safe-rm-latest-${{ matrix.target }}"
-          mkdir -p "$pd"
-          mv "$BIN" "$pd"
-          echo "pd=$pd" >> $GITHUB_ENV
-
-      - name: Generate sha256 hash(windows)
-        if: matrix.os=='windows-latest'
-        shell: bash
-        run: |
-          7z a "$pd.zip" "$pd"
-          certutil -hashfile "$pd.zip" SHA256 > "$pd.zip.sha256"
-          echo "ASSET=$pd.zip" >> $GITHUB_ENV
-          echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
-
-      - name: Generate sha256 hash(not window)
-        if: matrix.os!='windows-latest'
-        shell: bash
-        run: |
-          tar -czvf "$pd.tar.gz" "$pd"
-          shasum -a 256 "$pd.tar.gz" > "$pd.tar.gz.sha256"
-          echo "ASSET=$pd.tar.gz" >> $GITHUB_ENV
-          echo "ASSET_SUM=$pd.tar.gz.sha256" >> $GITHUB_ENV
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            7z a "$pd.zip" "$pd"
+            certutil -hashfile "$pd.zip" SHA256 > "$pd.zip.sha256"
+            echo "ASSET=$pd.zip" >> $GITHUB_ENV
+            echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
+          else
+            tar -czvf "$pd.tar.gz" "$pd"
+            shasum -a 256 "$pd.tar.gz" > "$pd.tar.gz.sha256"
+            echo "ASSET=$pd.tar.gz" >> $GITHUB_ENV
+            echo "ASSET_SUM=$pd.tar.gz.sha256" >> $GITHUB_ENV
+          fi
 
       - name: Upload Binary as Artifact
         uses: actions/upload-artifact@v4
@@ -140,14 +88,14 @@ jobs:
             ${{ env.ASSET_SUM }}
 
   release:
-    needs: [build, build-ubuntu-aach64]
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Download All Binaries
         uses: actions/download-artifact@v4
         with:
           path: build
-          
+
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:

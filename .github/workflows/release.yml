@@ -91,5 +91,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: build/**/*
+          tag_name: latest
         env:
           GITHUB_TOKEN: ${{ secrets.SAFE_RM_RELEASE_TOKEN }}

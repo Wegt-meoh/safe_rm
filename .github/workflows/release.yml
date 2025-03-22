@@ -13,48 +13,83 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, x86_64-apple-darwin]
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+          - os: macos-latest
+            target: aarch64-apple-darwin
           - os: macos-latest
             target: x86_64-apple-darwin
-
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
+     
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
 
-      - name: Build for ${{ matrix.os }}
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Archive the build
+      - name: Build for ${{ matrix.target }}
+        shell: bash
         run: |
-          mkdir -p release
-          cp target/${{ matrix.target }}/release/my_binary release/my_binary-${{ matrix.os }}-${{ matrix.target }}
-        if: success()
+          cargo build --release --taget ${{ matrix.target }}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            bin="target/${{ matrix.target }}/release/safe_rm.exe"
+          else
+            bin="target/${{ matrix.target }}/release/safe_rm"
+          fi
 
-      - name: Upload build artifact
+          echo "BIN=$bin" >> $GITHUB_ENV
+
+      - name: mv binary
+        shell: bash
+        run: |
+          pd="genshin_script-latest-${{ matrix.target }}"
+          mkdir -p "$pd"
+          mv "$BIN" "$pd"
+          echo "pd=$pd" >> $GITHUB_ENV
+
+      - name: Generate sha256 hash(windows)
+        if: matrix.os=='windows-latest'
+        shell: bash
+        run: |
+          7z a "$pd.zip" "$pd"
+          certutil -hashfile "$pd.zip" SHA256 > "$pd.zip.sha256"
+          echo "ASSET=$pd.zip" >> $GITHUB_ENV
+          echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
+
+      - name: Generate sha256 hash(not window)
+        if: matrix.os!='windows.latest'
+        shell: bash
+        run: |
+          tar -czvf "$pd.tar.gz" "$pd"
+          shasum -a 256 "$ARCHIVE.tar.gz" > "$ARCHIVE.tar.gz.sha256"
+          echo "ASSET=$pd.tar.gz" >> $GITHUB_ENV
+          echo "ASSET_SUM=$pd.tar.gz.sha256" >> $GITHUB_ENV
+
+      - name: Upload Binary as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: my_binary-${{ matrix.os }}-${{ matrix.target }}
-          path: release/
+          name: build-${{ matrix.target }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET_SUM }}
 
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - name: Download All Binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: build
+          
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: build/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.SAFE_RM_RELEASE_TOKEN }}

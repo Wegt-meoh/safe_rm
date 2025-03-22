@@ -88,9 +88,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install cross-compilation dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
       
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -98,16 +95,13 @@ jobs:
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
-      - name: Set CC for cross-compilation
-        run: echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-
       - name: Install cross
         run: cargo install cross
 
       - name: Build for ${{ matrix.target }}
         shell: bash
         run: |
-          cargo build --release --target ${{ matrix.target }}
+          cross build --release --target ${{ matrix.target }}
           bin="target/${{ matrix.target }}/release/safe-rm"
           echo "BIN=$bin" >> $GITHUB_ENV
           

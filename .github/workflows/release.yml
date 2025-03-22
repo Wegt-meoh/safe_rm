@@ -44,10 +44,19 @@ jobs:
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
+      - name: Install Rust cross
+        run: cargo install cross
+        if: ${{ matrix.os }} == "ubuntu-latest" 
+
       - name: Build for ${{ matrix.target }}
         shell: bash
         run: |
-          cargo build --release --target ${{ matrix.target }}
+          if [ "${{ matrix.os }}" = "ubuntu-latest"  ];then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+          
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             bin="target/${{ matrix.target }}/release/safe-rm.exe"
           else

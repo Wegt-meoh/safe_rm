@@ -37,9 +37,9 @@ jobs:
         run: |
           cargo build --release --target ${{ matrix.target }}
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            bin="target/${{ matrix.target }}/release/safe_rm.exe"
+            bin="target/${{ matrix.target }}/release/safe-rm.exe"
           else
-            bin="target/${{ matrix.target }}/release/safe_rm"
+            bin="target/${{ matrix.target }}/release/safe-rm"
           fi
 
           echo "BIN=$bin" >> $GITHUB_ENV

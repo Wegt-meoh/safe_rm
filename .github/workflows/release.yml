@@ -101,6 +101,9 @@ jobs:
       - name: Set CC for cross-compilation
         run: echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
+      - name: Install cross
+        run: cargo install cross
+
       - name: Build for ${{ matrix.target }}
         shell: bash
         run: |

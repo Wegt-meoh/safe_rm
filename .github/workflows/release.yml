@@ -9,74 +9,74 @@ on:
       - main
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+  # build:
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - os: windows-latest
+  #           target: x86_64-pc-windows-msvc
+  #         - os: windows-latest
+  #           target: aarch64-pc-windows-msvc
+  #         - os: macos-latest
+  #           target: aarch64-apple-darwin
+  #         - os: macos-latest
+  #           target: x86_64-apple-darwin
+  #         - os: ubuntu-22.04
+  #           target: x86_64-unknown-linux-gnu
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Set up Rust
+  #       uses: actions-rust-lang/setup-rust-toolchain@v1
      
-      - name: Install Rust target
-        run: rustup target add ${{ matrix.target }}
+  #     - name: Install Rust target
+  #       run: rustup target add ${{ matrix.target }}
 
-      - name: Build for ${{ matrix.target }}
-        shell: bash
-        run: |
-          cargo build --release --target ${{ matrix.target }}
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            bin="target/${{ matrix.target }}/release/safe-rm.exe"
-          else
-            bin="target/${{ matrix.target }}/release/safe-rm"
-          fi
+  #     - name: Build for ${{ matrix.target }}
+  #       shell: bash
+  #       run: |
+  #         cargo build --release --target ${{ matrix.target }}
+  #         if [ "${{ matrix.os }}" = "windows-latest" ]; then
+  #           bin="target/${{ matrix.target }}/release/safe-rm.exe"
+  #         else
+  #           bin="target/${{ matrix.target }}/release/safe-rm"
+  #         fi
 
-          echo "BIN=$bin" >> $GITHUB_ENV
+  #         echo "BIN=$bin" >> $GITHUB_ENV
           
-      - name: Mv binary
-        shell: bash
-        run: |
-          pd="safe-rm-latest-${{ matrix.target }}"
-          mkdir -p "$pd"
-          mv "$BIN" "$pd"
-          echo "pd=$pd" >> $GITHUB_ENV
+  #     - name: Mv binary
+  #       shell: bash
+  #       run: |
+  #         pd="safe-rm-latest-${{ matrix.target }}"
+  #         mkdir -p "$pd"
+  #         mv "$BIN" "$pd"
+  #         echo "pd=$pd" >> $GITHUB_ENV
 
-      - name: Generate sha256 hash(windows)
-        if: matrix.os=='windows-latest'
-        shell: bash
-        run: |
-          7z a "$pd.zip" "$pd"
-          certutil -hashfile "$pd.zip" SHA256 > "$pd.zip.sha256"
-          echo "ASSET=$pd.zip" >> $GITHUB_ENV
-          echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
+  #     - name: Generate sha256 hash(windows)
+  #       if: matrix.os=='windows-latest'
+  #       shell: bash
+  #       run: |
+  #         7z a "$pd.zip" "$pd"
+  #         certutil -hashfile "$pd.zip" SHA256 > "$pd.zip.sha256"
+  #         echo "ASSET=$pd.zip" >> $GITHUB_ENV
+  #         echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
 
-      - name: Generate sha256 hash(not window)
-        if: matrix.os!='windows-latest'
-        shell: bash
-        run: |
-          tar -czvf "$pd.tar.gz" "$pd"
-          shasum -a 256 "$pd.tar.gz" > "$pd.tar.gz.sha256"
-          echo "ASSET=$pd.tar.gz" >> $GITHUB_ENV
-          echo "ASSET_SUM=$pd.tar.gz.sha256" >> $GITHUB_ENV
+  #     - name: Generate sha256 hash(not window)
+  #       if: matrix.os!='windows-latest'
+  #       shell: bash
+  #       run: |
+  #         tar -czvf "$pd.tar.gz" "$pd"
+  #         shasum -a 256 "$pd.tar.gz" > "$pd.tar.gz.sha256"
+  #         echo "ASSET=$pd.tar.gz" >> $GITHUB_ENV
+  #         echo "ASSET_SUM=$pd.tar.gz.sha256" >> $GITHUB_ENV
 
-      - name: Upload Binary as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.target }}
-          path: |
-            ${{ env.ASSET }}
-            ${{ env.ASSET_SUM }}
+  #     - name: Upload Binary as Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: build-${{ matrix.target }}
+  #         path: |
+  #           ${{ env.ASSET }}
+  #           ${{ env.ASSET_SUM }}
 
   build-ubuntu-aach64:
     strategy:
@@ -140,7 +140,7 @@ jobs:
             ${{ env.ASSET_SUM }}
 
   release:
-    needs: build
+    needs: build-ubuntu-aach64
     runs-on: ubuntu-latest
     steps:
       - name: Download All Binaries

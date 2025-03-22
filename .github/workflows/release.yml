@@ -62,7 +62,7 @@ jobs:
           echo "ASSET_SUM=$pd.zip.sha256" >> $GITHUB_ENV
 
       - name: Generate sha256 hash(not window)
-        if: matrix.os!='windows.latest'
+        if: matrix.os!='windows-latest'
         shell: bash
         run: |
           tar -czvf "$pd.tar.gz" "$pd"
